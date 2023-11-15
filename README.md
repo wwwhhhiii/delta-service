@@ -19,7 +19,7 @@
 Установка зависимостей:
 
 ```
-cd DeltaService/
+cd delta-service/
 python3 -m venv env
 source ./env/bin/activate
 pip install -r ./requirements.txt
@@ -28,14 +28,14 @@ pip install -r ./requirements.txt
 Запуск:  
 
 ```
-cd DeltaService/src/delta_service/
+cd delta-service/src/delta_service/
 python3 app.py
 ```
 
 ### Миграции БД  
 
 ```
-cd DeltaService/
+cd delta-service/
 ```
 
 Автогенерация миграций из метаданных SQLAlchemy: `alembic revision --autogenerate -m "<message>"`
