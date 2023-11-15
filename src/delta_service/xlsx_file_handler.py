@@ -159,7 +159,7 @@ class XlsxFileHandler:
         db_records = [DeltaInDb(rep_dt=row.rep_dt, delta=row.delta) for row in rows]
         try:
             await self._upload_xlsx_files_data(db_records)
-        except ...:  # TODO Some db connection error here
+        except ConnectionRefusedError:
             raise asyncio.CancelledError
 
     def _get_xlsx_data_from_file(

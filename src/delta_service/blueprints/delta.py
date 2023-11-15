@@ -19,8 +19,12 @@ async def get_delta() -> Dict[str, Dict[str, Union[float, datetime.date]]]:
     
     app_settings: Settings = current_app.config["APP_SETTINGS"]
     db_session = await get_database_session(app_settings.DB.ENGINE)
-
-    delta_records = await get_delta_data_as_dataFrame(db_session=db_session)
+    
+    try:
+        delta_records = await get_delta_data_as_dataFrame(db_session=db_session)
+    except ConnectionRefusedError:
+        return "Service problem occured", 500
+    
     response_data = delta_records.to_dict()
     response = DeltaGetDataFrameResponse(records=response_data)
 
