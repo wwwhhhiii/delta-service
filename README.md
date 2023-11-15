@@ -9,7 +9,7 @@
 `XLSX_INPUT_DIR`  
 `XLSX_DIR_CHECK_INTERVAL_SEC`  
 
-Реквизиты для подключения к СУБД PostgreSQL. (Используются как приложением так и файлом `docker-compose.yml`)  
+Реквизиты для подключения к СУБД PostgreSQL. (Используются приложением, при подключении к БД, alembic-ом при миграциях и файлом `docker-compose.yml` при поднятии контейнера с PostgreSQL.)  
 `DB_USER`  
 `DB_PASSWORD`  
 `DB_NAME`  
@@ -38,7 +38,22 @@ python3 app.py
 cd delta-service/
 ```
 
-Автогенерация миграций из метаданных SQLAlchemy: `alembic revision --autogenerate -m "<message>"`
-Миграция на актуальную ревизию: `alembic upgrade head`
-Миграция на ревизию вперед: `alembic upgrade +1`
-Миграция на ревизию назад: `alembic upgrade -1`
+Автогенерация миграций из метаданных SQLAlchemy:  
+```
+alembic revision --autogenerate -m "<message>"
+```  
+
+Миграция на актуальную ревизию:  
+```
+alembic upgrade head
+```  
+
+Миграция на ревизию вперед:  
+```
+alembic upgrade +1
+```  
+
+Миграция на ревизию назад:  
+```
+alembic upgrade -1
+```  
