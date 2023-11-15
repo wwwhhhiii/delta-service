@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:alpine
+    volumes:
+      - "delta-service:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+    environment: 
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+
+volumes:
+  delta-service:
+    driver: local
