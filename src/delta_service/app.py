@@ -7,7 +7,7 @@ from settings.settings import Settings, get_settings
 
 
 def create_app(settings: Settings) -> Flask:
-    """Flask application factory. Creates new application"""
+    """Фабрика приложения Flask"""
 
     app = Flask(settings.APP.SERVICE_NAME)
 
@@ -24,7 +24,7 @@ def create_app(settings: Settings) -> Flask:
 def create_xlsx_file_handler(
     settings: Settings,
 ) -> XlsxFileHandler:
-    """Creates `.xlsx` file handler object."""
+    """Создает объект, ответственный за работу с `.xlsx` файлами."""
 
     fh = XlsxFileHandler(
         scan_dir_interval_sec=settings.APP.XLSX_DIR_CHECK_INTERVAL_SEC,
@@ -36,11 +36,11 @@ def create_xlsx_file_handler(
 
 if __name__ == "__main__":
     settings = get_settings()
-    # Connect to database and write connection engine to settings
     connect_to_database(settings)
 
     file_handler = create_xlsx_file_handler(settings)
-    # Scan excel files in a separate thread with own event loop
+    # Сканирование директории и ожидание новых .xlsx файлов
+    # в отдельном потоке со своим asyncio event loop
     file_handler.start_scan(directory=settings.APP.XLSX_INPUT_DIR)
 
     app = create_app(settings)
