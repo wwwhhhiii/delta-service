@@ -12,7 +12,7 @@ from loguru import logger
 
 from db.events import get_database_session
 from db.crud.delta import put_delta_data
-from models.db.entities import DeltaInDb
+from models.db.entities import DeltaRecord
 
 
 @dataclass
@@ -26,21 +26,30 @@ class XlsxFileRow:
 @dataclass
 class XlsxFileHandler:
     """
-    Contains logic for working with `.xlsx` files. From collection to database upload.
+    Содержит в себе логику работы с `.xlsx` файлами.
     
-    `_work_flag` - flag signaling to scan `scan_dir` directory
+    Ответственнен за:
+    - Обнаружение новых `.xlsx` файлов
+    - Парсинг и валидацию файлов
+    - Загрузку содержимого файлов в БД 
+    
+    `db_engine` - Асинхронный движок, для создания сессий в БД.
+    `failed_xlsx_dir` - Директория для "необрабатываемых" .xlsx файлов.
+    `scan_dir_interval_sec` - Интервал проверки директории с `.xlsx` файлами на наличие новых файлов.
     """
 
     db_engine: AsyncEngine
     failed_xlsx_dir: pathlib.Path = pathlib.Path("./failed_xlsx")
     scan_dir_interval_sec: int = 60
 
+    # Для хранения ссылок на активные задачи работы с .xlsx файлами
     _active_tasks: Set = field(default_factory=set)
+    # Флаг регуляции процесса работы
     _work_flag: threading.Event = field(default_factory=threading.Event)
     _worker_thread: Union[threading.Thread, None] = None
 
     def start_scan(self, directory: Union[str, pathlib.Path]) -> None:
-        """Starts `scan_dir` scanning for new `.xlsx` files"""
+        """Метод запуска обработчика `.xlsx` файлов."""
 
         directory = pathlib.Path(directory)
 
@@ -58,9 +67,9 @@ class XlsxFileHandler:
 
     def stop_scan(self) -> None:
         """
-        Stops scanning `scan_dir` for `.xlsx` files.\n
+        Останавливает ожидание в `.xlsx` файлов в `scan_dir`.\n
         
-        Stops worker thread, waits for it to finish current iteration.
+        Останавливает рабочий поток, ожидает пока он завершит текущую итерацию.
         """
 
         self._work_flag.clear()
@@ -68,7 +77,7 @@ class XlsxFileHandler:
         self._worker_thread = None
 
     def _scan_dir(self, directory: pathlib.Path) -> None:
-        """Contains logic for `.xlsx` files scanning"""
+        """Инициализирует процесс асинхронного ожидания `.xlsx` файлов."""
 
         # Wait for signal to start scanning dir
         self._work_flag.wait()
@@ -76,7 +85,9 @@ class XlsxFileHandler:
         asyncio.run(self._start_async_scan(directory))
 
     async def _start_async_scan(self, directory: pathlib.Path) -> None:
-        """"""
+        """Точка входя для асинхронной обработки `.xlsx` файлов."""
+
+        logger.debug("xlsx file hanler is started")
 
         # Work until termination signal from parent thread
         while self._work_flag.isSet():
@@ -90,7 +101,8 @@ class XlsxFileHandler:
             # Create parse-upload task for each collected file
             for file in xlsx_to_process:
                 p_task = asyncio.Task(self._process_xlsx_file(file))
-                p_task.add_done_callback(partial(self._any_task_done_clb, file))
+                p_task.add_done_callback(
+                    partial(self._any_task_done_clb, file))
                 self._active_tasks.add(p_task)
 
             await asyncio.sleep(self.scan_dir_interval_sec)
@@ -100,7 +112,7 @@ class XlsxFileHandler:
         file: pathlib.Path,
         task: asyncio.Task,
     ) -> None:
-        """Intended to be called for each task."""
+        """Вызывается по завершению работы каждого Task-а обработки файла."""
 
         # Если Task был отменен до его завершения (например, в случае недоступности БД)
         # Удаление Task-а из активных -> повторная попытка в след. итерации
@@ -112,7 +124,8 @@ class XlsxFileHandler:
         exc = task.exception()
         if exc:
             # Непойманная/непредвиденная ошибка - перемещение файла в failed dir
-            logger.error(f"Task for \"{file}\" failed - unhandled exception: \"{exc}\"")
+            logger.error(
+                f"Task for \"{file}\" failed - unhandled exception: \"{exc}\"")
             task.add_done_callback(
                 partial(self._fail_data_upload_clb, file))
         else:
@@ -125,7 +138,11 @@ class XlsxFileHandler:
         file: pathlib.Path,
         task: asyncio.Task,
     ) -> None:
-        """Called when task raised no exception."""
+        """
+        Вызывается при удачном завершении Task-a по загрузке файла в БД.
+        
+        Удаляет обработанный файл.
+        """
 
         file.unlink()
 
@@ -137,7 +154,11 @@ class XlsxFileHandler:
         file: pathlib.Path,
         task: asyncio.Task,
     ) -> None:
-        """Called when data upload was failed."""
+        """
+        Вызывается при неудачной попытке загрузки данных файла в БД.
+        
+        Переносит файл в директорию файлоф, которые вызвали непредусмотренную ошибку.
+        """
 
         if not self.failed_xlsx_dir.exists():
             self.failed_xlsx_dir.mkdir()
@@ -152,27 +173,32 @@ class XlsxFileHandler:
         )
 
     async def _process_xlsx_file(self, file: pathlib.Path) -> None:
-        """Entrypoint for working with noticed `.xlsx` file"""
+        """Входня точка для обработки нового `.xlsx` файла."""
 
         rows = self._get_xlsx_data_from_file(file)
-        # Create database representation of xlsx file records
-        db_records = [DeltaInDb(rep_dt=row.rep_dt, delta=row.delta) for row in rows]
+        # Создание репрезентаций записей содержимого .xslx файлов в БД
+        db_records = [
+            DeltaRecord(rep_dt=row.rep_dt, delta=row.delta) for row in rows]
         try:
             await self._upload_xlsx_files_data(db_records)
         except ConnectionRefusedError:
+            logger.error(
+                "Connection error occured while uploading .xlsx data,"
+                " cancelling task"
+            )
             raise asyncio.CancelledError
 
     def _get_xlsx_data_from_file(
         self,
         file: pathlib.Path,
     ) -> Sequence[XlsxFileRow]:
-        """Extracts row data from .xlsx `file` and returns sequence of rows.
+        """
+        Извлекает данные из `.xlsx` файла и возвращает список записей.
         
-        Expects `file` to be in `.xlsx` format.
+        Ожидает, что `file` будет в `.xlsx` формате.
         """
 
-        # TODO too much conversion, optimization needed
-        # TODO mb put it in utils
+        # TODO возможное место оптимизации
         
         rows = []
         data = pd.read_excel(
@@ -188,8 +214,8 @@ class XlsxFileHandler:
 
         return rows
 
-    async def _upload_xlsx_files_data(self, deltas: List[DeltaInDb]) -> None:
-        """Uploads parsed xlsx data in records to database"""
+    async def _upload_xlsx_files_data(self, deltas: List[DeltaRecord]) -> None:
+        """Загружает извлеченные записи в БД."""
 
         session = await get_database_session(self.db_engine)
         await put_delta_data(session, delta_records=deltas)
