@@ -13,6 +13,7 @@ from loguru import logger
 from db.events import get_database_session
 from db.crud.delta import put_delta_data
 from models.db.entities import DeltaRecord
+from util.parsers import parse_xlsx_as_data_frame
 
 
 @dataclass
@@ -197,18 +198,9 @@ class XlsxFileHandler:
         
         Ожидает, что `file` будет в `.xlsx` формате.
         """
-
-        # TODO возможное место оптимизации
         
         rows = []
-        data = pd.read_excel(
-            file,
-            dtype={"Rep_dt": datetime.date, "Delta": float},
-            parse_dates=["Rep_dt"],
-            thousands=",",
-        )
-        data["Rep_dt"] = pd.to_datetime(
-            data["Rep_dt"], errors="coerce", format="mixed")
+        data = parse_xlsx_as_data_frame(file)
         for index, row in data.iterrows():
             rows.append(XlsxFileRow(rep_dt=row["Rep_dt"], delta=row["Delta"]))
 
