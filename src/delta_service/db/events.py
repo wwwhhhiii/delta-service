@@ -7,9 +7,10 @@ from settings.settings import Settings
 
 def connect_to_database(settigns: Settings) -> None:
     """
-    Database connection establishment logic.
+    Логика подключения к БД.
     
-    Connect to database and store engine in settings.
+    Подключается к базе данных (создает асинхронный движок) 
+    и сохраняет подключение в `settings`.
     """
 
     # TODO try to change for scoped session
@@ -21,7 +22,9 @@ def connect_to_database(settigns: Settings) -> None:
 
 async def get_database_session(engine: AsyncEngine) -> AsyncSession:
     """
-    Database session factory.
+    Фабрика сессий БД.
+
+    Создает новую асинхронную сессию.
     """
     
     Session = sessionmaker(
