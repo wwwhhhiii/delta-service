@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:alpine
     volumes:
-      - "delta-service:/var/lib/postgresql/data"
+      - "deltaservice_delta-service:/var/lib/postgresql/data"
     ports:
       - "5432:5432"
     environment: 
@@ -13,5 +13,5 @@ services:
       POSTGRES_DB: ${DB_NAME}
 
 volumes:
-  delta-service:
-    driver: local
+  deltaservice_delta-service:
+    external: true
