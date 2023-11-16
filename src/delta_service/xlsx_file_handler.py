@@ -57,7 +57,7 @@ class XlsxFileHandler:
         if not directory.exists() or not directory.is_dir():
             raise ValueError("Scan directory does not exist or is not a directory")
 
-        # If scanning thread is already running
+        # Если сканирование уже запущено
         if self._worker_thread is not None:
             return
 
@@ -80,7 +80,7 @@ class XlsxFileHandler:
     def _scan_dir(self, directory: pathlib.Path) -> None:
         """Инициализирует процесс асинхронного ожидания `.xlsx` файлов."""
 
-        # Wait for signal to start scanning dir
+        # Ожидание сигнала начала сканирования
         self._work_flag.wait()
 
         asyncio.run(self._start_async_scan(directory))
@@ -90,16 +90,16 @@ class XlsxFileHandler:
 
         logger.debug("xlsx file hanler is started")
 
-        # Work until termination signal from parent thread
+        # Непрерывный цикл работы до стоп-сигнала
         while self._work_flag.isSet():
             xlsx_to_process = []
 
-            # Collect accumulated .xlsx files
+            # Сбор накопившихся .xlsx файлы
             for entity in directory.iterdir():
                 if entity.is_file() and entity.suffix.lower() == ".xlsx":
                     xlsx_to_process.append(entity)
 
-            # Create parse-upload task for each collected file
+            # Создание Task-ов на парсинг и загрузку собранных файлов
             for file in xlsx_to_process:
                 p_task = asyncio.Task(self._process_xlsx_file(file))
                 p_task.add_done_callback(
