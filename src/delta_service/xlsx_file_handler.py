@@ -146,7 +146,10 @@ class XlsxFileHandler:
         Удаляет обработанный файл.
         """
 
-        file.unlink()
+        try:
+            file.unlink()
+        except Exception as e:
+            logger.error(f"Error occured while deleting .xlsx file: {e}")
 
         self._active_tasks.remove(task)
         logger.info(f"Successfully processed \"{file}\"")
@@ -166,7 +169,10 @@ class XlsxFileHandler:
             self.failed_xlsx_dir.mkdir()
 
         # Перемещение файла в filed directory
-        file.rename(self.failed_xlsx_dir / file.name)
+        try:
+            file.rename(self.failed_xlsx_dir / file.name)
+        except Exception as e:
+            logger.error(f"Error occured while moving .xlsx file: {e}")
         
         self._active_tasks.remove(task)
         logger.error(
