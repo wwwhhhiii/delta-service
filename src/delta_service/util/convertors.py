@@ -12,11 +12,14 @@ def merge_records_to_data_frame(
 
     d = {}
 
-    if isinstance(records[0], DeltaRecord):
-        d = _get_delta_records_rows(records)
+    if len(records) != 0:
+        if isinstance(records[0], DeltaRecord):
+            d = _get_delta_records_rows(records)
 
-    if isinstance(records[0], DeltaRecordWithLag):
-        d = _get_lagged_delta_records_rows(records)
+        if isinstance(records[0], DeltaRecordWithLag):
+            d = _get_lagged_delta_records_rows(records)
+    else:
+        d = _get_delta_records_rows(records=records)
 
     df = pd.DataFrame(d)
     if fill_none:
