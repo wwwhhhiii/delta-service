@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Dict, Union
+from typing import Dict, Union
 from dataclasses import dataclass
 
 
