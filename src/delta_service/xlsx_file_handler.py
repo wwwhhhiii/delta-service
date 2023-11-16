@@ -125,6 +125,7 @@ class XlsxFileHandler:
         exc = task.exception()
         if exc:
             # Непойманная/непредвиденная ошибка - перемещение файла в failed dir
+            # в т.ч. сюда попадет ошибка ValueError при неудачной попытке чтения .xlsx файла
             logger.error(
                 f"Task for \"{file}\" failed - unhandled exception: \"{exc}\"")
             task.add_done_callback(
@@ -200,7 +201,7 @@ class XlsxFileHandler:
         """
         
         rows = []
-        data = parse_xlsx_as_data_frame(file)
+        data = parse_xlsx_as_data_frame(file)  # Может вызвать ValueError при неопределенном формате файла
         for index, row in data.iterrows():
             rows.append(XlsxFileRow(rep_dt=row["Rep_dt"], delta=row["Delta"]))
 
