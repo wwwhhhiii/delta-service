@@ -2,16 +2,15 @@ from typing import Sequence, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select
-import pandas as pd
-from loguru import logger
+from sqlalchemy.sql import text
 
 from models.db.tables import Delta
-from models.db.entities import DeltaInDb
+from models.db.entities import DeltaRecord, DeltaRecordWithLag
 
 
 async def put_delta_data(
     db_session: AsyncSession,
-    delta_records: Sequence[DeltaInDb],
+    delta_records: Sequence[DeltaRecord],
 ) -> None:
     """Put delta records data to database."""
 
@@ -24,33 +23,47 @@ async def put_delta_data(
         await db_session.execute(stmt)
 
 
-async def get_delta_data(
+async def get_all_delta_data(
     db_session: AsyncSession,
-) -> List[DeltaInDb]:
-    """Returns all records from delta table as `ScalarResult`."""
+) -> List[DeltaRecord]:
+    """Возвращает все записи из таблицы `deltas`."""
+
+    # TODO Возможное место оптимизации
 
     res = []
 
     async with db_session.begin():
         stmt = (
-            select(Delta)
+            select(Delta).order_by(Delta.rep_dt.asc())
         )
         data = await db_session.scalars(stmt)
-        for d in data:
-            res.append(DeltaInDb(rep_dt=d.rep_dt, delta=d.delta))
+        for rec in data:
+            res.append(DeltaRecord(rep_dt=rec.rep_dt, delta=rec.delta))
 
     return res
 
 
-async def get_delta_data_as_dataFrame(
+async def get_delta_data_lag_view(
     db_session: AsyncSession,
-) -> pd.DataFrame:
-    """Requests delta table from database and wraps result in `pandas.DataFrame`"""
+) -> List[DeltaRecordWithLag]:
+    """
+    Возвращает записи представления `deltalag`.
+    """
 
-    data = await get_delta_data(db_session)
-    df_data = pd.DataFrame({
-        "rep_dt": [d.rep_dt for d in data],
-        "delta": [d.delta for d in data],
-    })
-    
-    return df_data
+    res = []
+
+    async with db_session.begin():
+        stmt = text(
+            f"""
+            SELECT * FROM deltalag;
+            """
+        )
+
+        data = await db_session.execute(stmt)
+        for row in data:
+            res.append(DeltaRecordWithLag(
+                rep_dt=row[0],
+                delta=row[1],
+                delta_lag=row[2]))
+
+    return res
