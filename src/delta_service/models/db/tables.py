@@ -14,4 +14,4 @@ class Delta(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     rep_dt: Mapped[datetime.date]
-    delta: Mapped[float] = mapped_column(Float(precision=2))
+    delta: Mapped[float] = mapped_column(Float())

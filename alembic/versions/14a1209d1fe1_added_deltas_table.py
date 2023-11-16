@@ -58,7 +58,7 @@ def upgrade() -> None:
     op.create_table('deltas',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('rep_dt', sa.Date(), nullable=False),
-    sa.Column('delta', sa.Float(precision=2), nullable=False),
+    sa.Column('delta', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
