@@ -12,7 +12,7 @@ def parse_xlsx_as_data_frame(file: pathlib.Path) -> pd.DataFrame:
         file,
         dtype={"Rep_dt": datetime.date, "Delta": float},
         parse_dates=["Rep_dt"],
-        thousands=",",
+        decimal=",",
     )
     data["Rep_dt"] = pd.to_datetime(
         data["Rep_dt"], errors="coerce", format="mixed")
